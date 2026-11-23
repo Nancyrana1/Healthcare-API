@@ -1,109 +1,143 @@
-# 💰 Insurance Premium Predictor
+# Insurance Premium Predictor API
 
-A full-stack Machine Learning project that predicts the **insurance premium category** based on user details like age, BMI, income, lifestyle, and occupation.
+A machine-learning application that predicts an **insurance premium category** from user-provided demographic, income, lifestyle, and location details. The project combines a **FastAPI backend** for request validation and model inference with a **Streamlit frontend** for interactive input.
 
----
+> **Educational project:** Predictions are produced by a trained machine-learning model and should not be treated as insurance quotes, medical advice, or financial advice.
 
-## 🚀 Project Overview
+## Overview
 
-This application allows users to input personal and lifestyle details through a **Streamlit UI**, which sends data to a **FastAPI backend**.
-The backend processes the data, applies feature engineering, and uses a trained ML model to predict the premium category.
+The application accepts details such as age, weight, height, annual income, smoking status, city, and occupation. The API validates the input with Pydantic, derives additional features, constructs a pandas DataFrame, and passes it to a serialized scikit-learn-compatible model for category prediction.
 
----
+## Features
 
-## 🧠 Features
+- Interactive Streamlit interface for entering user details
+- FastAPI `POST /predict` endpoint
+- Pydantic input validation with constrained fields and allowed occupation values
+- Computed features:
+  - **BMI:** weight divided by height squared
+  - **Age group:** young, adult, middle-aged, or senior
+  - **Lifestyle risk:** derived from smoking status and BMI
+  - **City tier:** mapped from the configured Tier 1 and Tier 2 city lists; other cities are assigned Tier 3
+- Model inference using a locally loaded `model.pkl` artifact
+- Interactive API documentation provided by FastAPI
 
-* Predict insurance premium category
-* Real-time API interaction using FastAPI
-* Interactive frontend using Streamlit
-* Feature engineering (BMI, age group, lifestyle risk, city tier)
-* Clean and modular code structure
+## Architecture
 
----
-
-## 🛠️ Tech Stack
-
-* **Backend:** FastAPI
-* **Frontend:** Streamlit
-* **Machine Learning:** Scikit-learn
-* **Language:** Python
-
----
-
-## 📂 Project Structure
-
+```text
+User
+ |
+ v
+Streamlit UI (frontend.py)
+ |
+ | POST /predict (JSON)
+ v
+FastAPI application (main.py)
+ |
+ v
+Pydantic validation + feature engineering
+ |
+ v
+Pandas input DataFrame
+ |
+ v
+Trained model (model.pkl)
+ |
+ v
+Predicted premium category
 ```
-patient_fast_api/
-│
-├── main.py          # FastAPI backend
-├── app.py           # Streamlit frontend
-├── model.pkl        # Trained ML model (optional)
+
+## Tech Stack
+
+| Layer | Technologies |
+|---|---|
+| Language | Python |
+| API backend | FastAPI, Uvicorn |
+| Frontend | Streamlit |
+| Data processing | Pandas |
+| Input validation | Pydantic |
+| Machine learning | Serialized model loaded with Pickle |
+| HTTP requests | Requests |
+
+## Repository Structure
+
+```text
+Healthcare-API/
+├── main.py        # FastAPI backend, validation, feature engineering, prediction
+├── frontend.py    # Streamlit user interface and API request
+├── model.pkl      # Required trained model artifact (not present in the current repository tree)
 ├── .gitignore
 └── README.md
 ```
 
----
+**Important:** The current repository listing does not include `model.pkl`. The API loads this file when `main.py` starts, so you must provide the compatible trained model artifact before running the backend. Do not commit large or sensitive model/data artifacts unless appropriate for the project.
 
-## ▶️ How to Run Locally
+## Getting Started
 
-### 1️⃣ Clone the repository
+### 1. Clone the repository
 
-```
-git clone https://github.com/Nancyrana1/Insurance-Premium-Predictor.git
-cd Insurance-Premium-Predictor
-```
-
----
-
-### 2️⃣ Create virtual environment
-
-```
-python -m venv myenv
+```bash
+git clone https://github.com/Nancyrana1/Healthcare-API.git
+cd Healthcare-API
 ```
 
-Activate:
+### 2. Create and activate a virtual environment
 
-```
-myenv\Scripts\activate
-```
-
----
-
-### 3️⃣ Install dependencies
-
-```
-pip install fastapi uvicorn streamlit pandas numpy scikit-learn
+```bash
+python -m venv .venv
 ```
 
----
+Windows PowerShell:
 
-### 4️⃣ Run Backend (FastAPI)
-
+```powershell
+.venv\\Scripts\\Activate.ps1
 ```
+
+macOS/Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
+pip install fastapi uvicorn streamlit pandas pydantic scikit-learn requests
+```
+
+Use a scikit-learn version compatible with the version used to serialize `model.pkl`. Pickle model files are not generally guaranteed to be portable across library versions.
+
+### 4. Add the trained model
+
+Place the compatible `model.pkl` file in the project root, alongside `main.py`.
+
+### 5. Start the API
+
+```bash
 uvicorn main:app --reload
 ```
 
-Open:
+The API will be available at:
 
+- Base URL: `http://127.0.0.1:8000`
+- Interactive documentation: `http://127.0.0.1:8000/docs`
+
+### 6. Start the Streamlit frontend
+
+Open a second terminal with the virtual environment activated:
+
+```bash
+streamlit run frontend.py
 ```
-http://127.0.0.1:8000/docs
-```
 
----
+The frontend is configured to send requests to `http://127.0.0.1:8000/predict`. Run the API locally before submitting a prediction.
 
-### 5️⃣ Run Frontend (Streamlit)
+## API Reference
 
-```
-streamlit run app.py
-```
+### Predict premium category
 
----
+`POST /predict`
 
-## 🔄 API Endpoint
-
-**POST /predict**
-
-### Sample Input:
+Example request:
 
 ```json
 {
@@ -117,7 +151,19 @@ streamlit run app.py
 }
 ```
 
-### Response:
+Allowed occupation values:
+
+```text
+retired
+freelancer
+student
+government_job
+business_owner
+unemployed
+private_job
+```
+
+Example response shape:
 
 ```json
 {
@@ -125,50 +171,33 @@ streamlit run app.py
 }
 ```
 
----
+The actual category depends on the trained model and supplied input.
 
-## 📊 Feature Engineering
+## Implementation Notes
 
-The model uses derived features such as:
+- The model is deserialized at API startup from `model.pkl`.
+- The request schema validates age, weight, height, income, smoking status, city, and occupation.
+- Feature names passed to the model are `bmi`, `age_group`, `lifestyle_risk`, `city_tier`, `income_lpa`, and `occupation`.
+- City-tier mapping is based on the lists defined in `main.py`; an unlisted city is currently treated as Tier 3.
+- The Streamlit frontend uses a local API URL. Update `API_URL` in `frontend.py` when connecting to a separately hosted backend.
 
-* **BMI** = weight / height²
-* **Age Group** (young, adult, middle_age, senior)
-* **Lifestyle Risk** (based on BMI & smoking)
-* **City Tier** (Tier 1, 2, 3 classification)
+## Future Improvements
 
----
+- Add automated tests for request validation and prediction behaviour
+- Add a dependency file with tested, pinned package versions
+- Add configurable API URL and improved request timeout/error handling in the frontend
+- Document model training data, evaluation metrics, and model provenance
+- Add input range checks and edge-case tests for BMI and city mapping
+- Deploy the API and frontend with environment-based configuration
 
-## ⚠️ Notes
-
-* Ensure `model.pkl` is present in the root directory
-* Use correct `scikit-learn` version for compatibility
-* Do not upload `myenv/` to GitHub
-
----
-
-## 💼 Use Cases
-
-* Insurance premium estimation
-* Health risk categorization
-* ML + API + UI integration learning
-
----
-
-## 👩‍💻 Author
+## Author
 
 **Nancy Rana**
 
----
-
-## ⭐ Future Improvements
-
-* Add prediction probabilities
-* Deploy on cloud (AWS / Render)
-* Improve UI/UX
-* Add user authentication
+- GitHub: [@Nancyrana1](https://github.com/Nancyrana1)
+- Portfolio: [Personal Portfolio](https://portfolio-nancyrana1s-projects.vercel.app/)
+- LinkedIn: [Nancy Rana](https://www.linkedin.com/in/nancy-rana-2441942a4/)
 
 ---
 
-## 📌 License
-
-This project is for educational purposes.
+*Built as a practical project to explore machine-learning inference through a REST API and an interactive Python frontend.*
